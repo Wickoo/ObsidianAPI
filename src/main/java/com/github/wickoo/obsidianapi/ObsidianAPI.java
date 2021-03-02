@@ -60,7 +60,6 @@ public class ObsidianAPI {
     }
 
     public void test() {
-
     }
 
     public static ObsidianAPI getInstance() { return obsidianAPI; }

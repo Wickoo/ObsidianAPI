@@ -60,7 +60,7 @@ public class ItemBuilder {
 
     public ItemStack setSkin (Player player) {
 
-        if (!itemStack.getType().equals(Material.SKULL_ITEM)) {
+        if (!itemStack.getType().equals(Material.PLAYER_HEAD)) {
             return itemStack;
         }
 
