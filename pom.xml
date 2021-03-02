@@ -6,7 +6,7 @@
 
     <groupId>com.github.wickoo</groupId>
     <artifactId>ObsidianAPI</artifactId>
-    <version>1.2</version>
+    <version>1.3</version>
     <packaging>jar</packaging>
 
     <name>ObsidianAPI</name>
@@ -60,6 +60,10 @@
         <repository>
             <id>sonatype</id>
             <url>https://oss.sonatype.org/content/groups/public/</url>
+        </repository>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
         </repository>
     </repositories>
     <dependencies>
