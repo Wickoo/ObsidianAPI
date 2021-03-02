@@ -1,0 +1,7 @@
+name: ObsidianMain
+version: ${project.version}
+main: com.github.wickoo.obsidianapi.ObsidianMain
+api-version: 1.16
+commands:
+  obsidianapi:
+    aliases: [oapi, oa]

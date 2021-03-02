@@ -1,0 +1,20 @@
+############################################
+#                                          #
+#       OBSIDIAN API CONFIGURATION         #
+#                                          #
+############################################
+
+
+
+
+############################################
+#                                          #
+#           MYSQL Connection               #
+#                                          #
+############################################
+
+host: na03-sql.pebblehost.com
+port: 3306
+database: customer_156646_bridges
+username: customer_156646_bridges
+password: zuoW1H#Ggr-xq19qcbj#
