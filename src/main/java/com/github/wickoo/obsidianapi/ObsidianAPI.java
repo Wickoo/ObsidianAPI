@@ -59,9 +59,6 @@ public class ObsidianAPI {
         Bukkit.getOnlinePlayers().forEach(npc::removeNPC);
     }
 
-    public void test() {
-    }
-
     public static ObsidianAPI getInstance() { return obsidianAPI; }
 
     public SQLConnection getSQLConnection() { return sqlConnection; }
