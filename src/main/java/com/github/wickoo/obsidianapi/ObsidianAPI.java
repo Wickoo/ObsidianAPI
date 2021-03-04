@@ -1,13 +1,16 @@
 package com.github.wickoo.obsidianapi;
 
 import com.github.wickoo.obsidianapi.disguise.DisguiseManager;
+import com.github.wickoo.obsidianapi.disguise.Skin;
 import com.github.wickoo.obsidianapi.menu.MenuManager;
 import com.github.wickoo.obsidianapi.mysql.SQLConnection;
 import com.github.wickoo.obsidianapi.npc.NPC;
 import com.github.wickoo.obsidianapi.npc.NPCManager;
 import com.github.wickoo.obsidianapi.scoreboard.Flatboard;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.UUID;
@@ -57,6 +60,18 @@ public class ObsidianAPI {
         if (npc == null) { return; }
         npcManager.getNPCs().remove(npc);
         Bukkit.getOnlinePlayers().forEach(npc::removeNPC);
+    }
+
+    public void setSkin(Player player, Skin skin) {
+        disguiseManager.setSkin(player, skin);
+    }
+
+    public Skin getSkin(Player player) {
+        return disguiseManager.getSkin(player);
+    }
+
+    public void setName(Player player, String name) {
+        disguiseManager.setPlayerName(player, name);
     }
 
     public static ObsidianAPI getInstance() { return obsidianAPI; }

@@ -11,11 +11,12 @@ import com.comphenix.protocol.wrappers.EnumWrappers;
 import com.comphenix.protocol.wrappers.PlayerInfoData;
 import com.comphenix.protocol.wrappers.WrappedGameProfile;
 import com.comphenix.protocol.wrappers.WrappedSignedProperty;
-import com.github.wickoo.obsidianapi.packets.*;
-import com.github.wickoo.obsidianapi.utils.PlayerUtils;
+import com.github.wickoo.obsidianapi.packets.WrapperPlayServerPlayerInfo;
+import com.github.wickoo.obsidianapi.packets.WrapperPlayServerRespawn;
 import com.google.common.collect.Multimap;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -26,8 +27,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 public class DisguiseManager implements Listener {
 
@@ -46,22 +45,31 @@ public class DisguiseManager implements Listener {
 
     }
 
-    public boolean disguisePlayer (Player player, String disguiseName) throws ExecutionException, InterruptedException {
+    public boolean disguisePlayer (Player player, String disguiseName) {
 
-        CompletableFuture<Disguise> completableFuture = CompletableFuture.supplyAsync(() -> Disguise.buildDisguise(player, disguiseName)).thenApply(disguise -> {
+        if (disguiseMap.containsKey(player.getUniqueId())) { undisguisePlayer(player); }
+
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+
+            Disguise disguise = Disguise.buildDisguise(player, disguiseName);
 
             if (disguise == null) {
-                return null;
+                return;
             }
 
-            disguiseMap.put(player.getUniqueId(), disguise);
-            setPlayerName(player, disguiseName);
-            updateDisguise(player);
-            return disguise;
+            Bukkit.getScheduler().runTask(plugin, () -> {
+
+                disguiseMap.put(player.getUniqueId(), disguise);
+                disguise.setActualSkin(getSkin(player));
+                setPlayerName(player, disguiseName);
+                setSkin(player, disguise.getDisguisedSkin());
+                updatePlayer(player);
+
+            });
 
         });
 
-        return completableFuture.get() != null;
+        return true;
 
     }
 
@@ -75,143 +83,54 @@ public class DisguiseManager implements Listener {
 
         disguiseMap.remove(player.getUniqueId());
         setPlayerName(player, disguise.getActualName());
-        clearDisguise(player, disguise);
+        setSkin(player, disguise.getActualSkin());
+        updatePlayer(player);
         return true;
 
     }
 
-    private void setDisguiseSkin(Player player) {
+    public Skin getSkin(Player player) {
 
         WrappedGameProfile gameProfile = WrappedGameProfile.fromPlayer(player);
         Multimap<String, WrappedSignedProperty> propertiesMap = gameProfile.getProperties();
 
-        Disguise disguise = this.getDisguisedPlayer(player.getUniqueId());
         Skin skin = new Skin();
         skin.setTexture(propertiesMap.get("textures").iterator().next().getValue());
         skin.setSignature(propertiesMap.get("textures").iterator().next().getSignature());
-        disguise.setActualSkin(skin);
+
+        return skin;
+
+    }
+
+    public void setSkin(Player player, Skin skin) {
+
+        WrappedGameProfile gameProfile = WrappedGameProfile.fromPlayer(player);
+        Multimap<String, WrappedSignedProperty> propertiesMap = gameProfile.getProperties();
 
         propertiesMap.removeAll("textures");
-        String localTexture = disguise.getDisguisedSkin().getTexture();
-        String localSignature = disguise.getDisguisedSkin().getSignature();
+        String localTexture = skin.getTexture();
+        String localSignature = skin.getSignature();
 
         WrappedSignedProperty textures = new WrappedSignedProperty("textures", localTexture, localSignature);
         propertiesMap.put("textures", textures);
 
     }
 
-    private WrappedGameProfile buildProfile (Player player, String name, Skin skin) {
+    public WrappedGameProfile buildProfile (UUID uuid, String name, Skin skin) {
 
-        final WrappedGameProfile gameProfile = WrappedGameProfile.fromPlayer(player);
+        WrappedGameProfile gameProfile = new WrappedGameProfile(uuid, name);
         Multimap<String, WrappedSignedProperty> propertiesMap = gameProfile.getProperties();
 
         propertiesMap.removeAll("textures");
         WrappedSignedProperty textures = new WrappedSignedProperty("textures", skin.getTexture(), skin.getSignature());
         propertiesMap.put("textures", textures);
 
-        WrappedGameProfile newProfile = WrappedGameProfile.fromPlayer(player).withName(name);
-        newProfile.getProperties().putAll(gameProfile.getProperties());
-        return newProfile;
+        return gameProfile;
 
     }
 
-    private void updateDisguise(Player disguisedPlayer) {
+    public void setPlayerName(Player player, String name) {
 
-        Disguise disguise = getDisguisedPlayer(disguisedPlayer.getUniqueId());
-        setDisguiseSkin(disguisedPlayer);
-        setPlayerName(disguisedPlayer, disguise.getDisguisedName());
-        disguisedPlayer.setDisplayName(getDisguisedPlayers().get(disguisedPlayer.getUniqueId()).getDisguisedName());
-
-        // remove player packet
-        WrapperPlayServerPlayerInfo serverInfoRemove = new WrapperPlayServerPlayerInfo();
-        serverInfoRemove.setAction(EnumWrappers.PlayerInfoAction.REMOVE_PLAYER);
-        List<PlayerInfoData> playerInfoDataListOld = serverInfoRemove.getData();
-        PlayerInfoData playerInfoDataOld = new PlayerInfoData(buildProfile(disguisedPlayer, disguise.getActualName(), disguise.getActualSkin()),
-                PlayerUtils.getPing(disguisedPlayer), EnumWrappers.NativeGameMode.fromBukkit(disguisedPlayer.getGameMode()), null);
-        playerInfoDataListOld.add(playerInfoDataOld);
-        serverInfoRemove.setData(playerInfoDataListOld);
-
-        // destroy entity packet
-        WrapperPlayServerEntityDestroy packetDestroyEntity = new WrapperPlayServerEntityDestroy();
-        packetDestroyEntity.setEntityIds(new int[]{disguisedPlayer.getEntityId()});
-
-        // add player packet
-        WrapperPlayServerPlayerInfo serverInfoAdd = new WrapperPlayServerPlayerInfo();
-        serverInfoAdd.setAction(EnumWrappers.PlayerInfoAction.ADD_PLAYER);
-        List<PlayerInfoData> playerInfoDataListNew = serverInfoAdd.getData();
-        PlayerInfoData playerInfoDataNew = new PlayerInfoData(buildProfile(disguisedPlayer, disguise.getDisguisedName(), disguise.getDisguisedSkin()),
-                PlayerUtils.getPing(disguisedPlayer), EnumWrappers.NativeGameMode.fromBukkit(disguisedPlayer.getGameMode()), null);
-        playerInfoDataListNew.add(playerInfoDataNew);
-        serverInfoAdd.setData(playerInfoDataListNew);
-
-        //send to everyone
-        for (Player otherPlayer : Bukkit.getOnlinePlayers()) {
-            if (otherPlayer.getUniqueId().equals(disguisedPlayer.getUniqueId())) {
-                continue;
-            }
-            try {
-                protocolManager.sendServerPacket(otherPlayer, serverInfoRemove.getHandle());
-                protocolManager.sendServerPacket(otherPlayer, packetDestroyEntity.getHandle());
-                protocolManager.sendServerPacket(otherPlayer, serverInfoAdd.getHandle());
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
-            }
-
-        }
-
-        //update equipment
-        updatePlayer(disguisedPlayer);
-
-    }
-
-    private void clearDisguise(Player disguisedPlayer, Disguise disguise) {
-
-        // remove disguised player
-        WrapperPlayServerPlayerInfo serverInfoRemove = new WrapperPlayServerPlayerInfo();
-        serverInfoRemove.setAction(EnumWrappers.PlayerInfoAction.REMOVE_PLAYER);
-        List<PlayerInfoData> playerInfoDataListOld = serverInfoRemove.getData();
-        PlayerInfoData playerInfoDataOld = new PlayerInfoData(buildProfile(disguisedPlayer, disguise.getDisguisedName(), disguise.getDisguisedSkin()),
-                PlayerUtils.getPing(disguisedPlayer), EnumWrappers.NativeGameMode.fromBukkit(disguisedPlayer.getGameMode()), null);
-        playerInfoDataListOld.add(playerInfoDataOld);
-        serverInfoRemove.setData(playerInfoDataListOld);
-
-        // destory entity packet
-        WrapperPlayServerEntityDestroy packetDestroyEntity = new WrapperPlayServerEntityDestroy();
-        packetDestroyEntity.setEntityIds(new int[]{disguisedPlayer.getEntityId()});
-
-        // add player packet
-        WrapperPlayServerPlayerInfo serverInfoAdd = new WrapperPlayServerPlayerInfo();
-        serverInfoAdd.setAction(EnumWrappers.PlayerInfoAction.ADD_PLAYER);
-        List<PlayerInfoData> playerInfoDataListNew = serverInfoAdd.getData();
-        PlayerInfoData playerInfoDataNew = new PlayerInfoData(buildProfile(disguisedPlayer, disguise.getActualName(), disguise.getActualSkin()),
-                PlayerUtils.getPing(disguisedPlayer), EnumWrappers.NativeGameMode.fromBukkit(disguisedPlayer.getGameMode()), null);
-        playerInfoDataListNew.add(playerInfoDataNew);
-        serverInfoAdd.setData(playerInfoDataListNew);
-
-        //send to everyone
-        for (Player otherPlayer : Bukkit.getOnlinePlayers()) {
-            if (otherPlayer.getUniqueId().equals(disguisedPlayer.getUniqueId())) {
-                continue;
-            }
-            try {
-                protocolManager.sendServerPacket(otherPlayer, serverInfoRemove.getHandle());
-                protocolManager.sendServerPacket(otherPlayer, packetDestroyEntity.getHandle());
-                protocolManager.sendServerPacket(otherPlayer, serverInfoAdd.getHandle());
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
-            }
-
-        }
-
-        //update equipment
-        updatePlayer(disguisedPlayer);
-
-    }
-
-    private void setPlayerName(Player player, String name) {
-
-        player.setDisplayName(name);
-        player.setPlayerListName(name);
         Class<?> craftPlayerClass = player.getClass();
 
         try {
@@ -284,33 +203,53 @@ public class DisguiseManager implements Listener {
 
     }
 
-    private void updatePlayer (Player player) {
+    public void updatePlayer (Player player) {
 
-        for (Player other : Bukkit.getOnlinePlayers()) {
+        Bukkit.getOnlinePlayers().forEach(p -> p.hidePlayer(player));
+        Bukkit.getOnlinePlayers().forEach(p -> p.showPlayer(player));
 
-            if (other.equals(player)) {
-                continue;
-            }
+        WrapperPlayServerRespawn respawn = new WrapperPlayServerRespawn();
+        respawn.setDefaults(player);
+        WrapperPlayServerPlayerInfo remove = new WrapperPlayServerPlayerInfo();
+        remove.setDefaults(player, EnumWrappers.PlayerInfoAction.REMOVE_PLAYER);
+        WrapperPlayServerPlayerInfo add = new WrapperPlayServerPlayerInfo();
+        add.setDefaults(player, EnumWrappers.PlayerInfoAction.ADD_PLAYER);
+
+
+        try {
+            protocolManager.sendServerPacket(player, remove.getHandle());
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }
+
+        final boolean flying = player.isFlying();
+        final Location location = player.getLocation();
+        final int level = player.getLevel();
+        final float xp = player.getExp();
+        final double maxHealth = player.getMaxHealth();
+        final double health = player.getHealth();
+
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
 
             try {
-                protocolManager.sendServerPacket(other, new WrapperPlayServerNamedEntitySpawn().setDefaults(player).getHandle());
-                protocolManager.sendServerPacket(other, new WrapperPlayServerEntityMetadata().setDefaults(player).getHandle());
-                protocolManager.sendServerPacket(other, new WrapperPlayServerEntityHeadRotation().setDefaults(player).getHandle());
-                protocolManager.sendServerPacket(other, new WrapperPlayServerEntityLook().setDefaults(player).getHandle());
 
-                WrapperPlayServerEntityEquipment.getPackets(player).forEach(packet -> {
-                    try {
-                        protocolManager.sendServerPacket(other, packet.getHandle());
-                    } catch (InvocationTargetException e) {
-                        e.printStackTrace();
-                    }
-                });
+                protocolManager.sendServerPacket(player, respawn.getHandle());
+
+                player.setFlying(flying);
+                player.teleport(location);
+                player.updateInventory();
+                player.setLevel(level);
+                player.setExp(xp);
+                player.setMaxHealth(maxHealth);
+                player.setHealth(health);
+
+                protocolManager.sendServerPacket(player, add.getHandle());
 
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
             }
 
-        }
+        }, 1);
 
     }
 
@@ -318,8 +257,16 @@ public class DisguiseManager implements Listener {
     public void onJoin(PlayerJoinEvent event) {
 
         Player player = event.getPlayer();
-        undisguisePlayer(player); //method checks if theyre disguised
+        if (!isDisguised(player)) { return; }
 
+        Disguise disguise = disguiseMap.get(player.getUniqueId());
+        setPlayerName(player, disguise.getDisguisedName());
+        setSkin(player, disguise.getDisguisedSkin());
+
+    }
+
+    public boolean isDisguised(Player player) {
+        return disguiseMap.containsKey(player.getUniqueId());
     }
 
     public Map<UUID, Disguise> getDisguisedPlayers () { return disguiseMap; }

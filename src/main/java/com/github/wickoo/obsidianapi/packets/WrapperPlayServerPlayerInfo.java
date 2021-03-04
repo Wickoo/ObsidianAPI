@@ -23,9 +23,13 @@ package com.github.wickoo.obsidianapi.packets;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.wrappers.EnumWrappers;
 import com.comphenix.protocol.wrappers.EnumWrappers.PlayerInfoAction;
 import com.comphenix.protocol.wrappers.PlayerInfoData;
+import com.comphenix.protocol.wrappers.WrappedGameProfile;
+import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class WrapperPlayServerPlayerInfo extends AbstractPacket {
@@ -34,6 +38,15 @@ public class WrapperPlayServerPlayerInfo extends AbstractPacket {
     public WrapperPlayServerPlayerInfo() {
         super(new PacketContainer(TYPE), TYPE);
         handle.getModifier().writeDefaults();
+    }
+
+    public void setDefaults(Player player, PlayerInfoAction action) {
+
+        setAction(action);
+        List<PlayerInfoData> list = new ArrayList<>();
+        list.add(new PlayerInfoData(WrappedGameProfile.fromPlayer(player), 20, EnumWrappers.NativeGameMode.fromBukkit(player.getGameMode()), null));
+        setData(list);
+
     }
 
     public WrapperPlayServerPlayerInfo(PacketContainer packet) {

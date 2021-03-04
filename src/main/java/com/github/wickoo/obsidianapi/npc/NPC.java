@@ -16,6 +16,7 @@ import org.bukkit.util.Vector;
 
 import java.util.UUID;
 
+
 public class NPC {
 
     private JavaPlugin plugin;
@@ -127,9 +128,9 @@ public class NPC {
     }
 
     //(credit to https://www.spigotmc.org/threads/help-with-npcs-head-rotation.427251/)
-    private double calculateDistance(Player p) {
+    public double calculateDistance(Player p) {
 
-        double diffX = entityPlayer.locX - p.getLocation().getX(), diffZ = entityPlayer.locZ - p.getLocation().getZ();
+        double diffX = location.getX() - p.getLocation().getX(), diffZ = location.getZ() - p.getLocation().getZ();
         double x = diffX < 0 ? (diffX * -1) : diffX, z = diffZ < 0 ? (diffZ * -1) : diffZ;
         return Math.sqrt(Math.pow(x, 2) + Math.pow(z, 2));
 
