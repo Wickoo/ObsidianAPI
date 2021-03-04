@@ -18,16 +18,12 @@ public class ItemBuilder {
 
     private ItemStack itemStack;
 
-    private ItemBuilder () { }
-
-    public ItemStack buildItem (Material material, int data, int amount) {
+    public ItemBuilder(Material material, int data, int amount) {
         itemStack = new ItemStack(material, amount, (short) data);
-        return itemStack;
     }
 
-    public ItemStack buildItem (Material material) {
+    public ItemBuilder(Material material) {
         itemStack = new ItemStack(material);
-        return itemStack;
     }
 
     public ItemStack setName (String name) {
