@@ -32,7 +32,7 @@ public class MenuManager implements Listener {
 
         if (menu == null) { return; }
 
-        menu.onClose(this);
+        menu.onClose();
 
     }
 

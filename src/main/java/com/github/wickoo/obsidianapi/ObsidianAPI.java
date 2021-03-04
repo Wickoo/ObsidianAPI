@@ -80,4 +80,6 @@ public class ObsidianAPI {
 
     public DisguiseManager getDisguiseManager() { return disguiseManager; }
 
+    public MenuManager getMenuManager() { return menuManager; }
+
 }

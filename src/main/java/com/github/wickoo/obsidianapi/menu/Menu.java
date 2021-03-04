@@ -1,5 +1,6 @@
 package com.github.wickoo.obsidianapi.menu;
 
+import com.github.wickoo.obsidianapi.ObsidianAPI;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -11,9 +12,9 @@ public abstract class Menu {
 
     public abstract Inventory getInventory();
 
-    public void onClose(MenuManager menuManager) { menuManager.getPlayersInMenu().remove(getPlayer().getUniqueId()); }
+    public void onClose() { ObsidianAPI.getInstance().getMenuManager().getPlayersInMenu().remove(getPlayer().getUniqueId()); }
 
-    public void initInventory(MenuManager menuManager) { menuManager.getPlayersInMenu().put(getPlayer().getUniqueId(), this); }
+    public void initInventory() { ObsidianAPI.getInstance().getMenuManager().getPlayersInMenu().put(getPlayer().getUniqueId(), this); }
 
     public void processClick(InventoryClickEvent event) {
 
